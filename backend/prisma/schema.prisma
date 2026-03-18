@@ -1,0 +1,74 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum MuscleGroup {
+  chest
+  back
+  legs
+  shoulders
+  arms
+  core
+}
+
+model User {
+  id             String          @id @default(uuid()) @db.Uuid
+  email          String          @unique
+  password_hash  String
+  created_at     DateTime        @default(now())
+  sessions       Session[]
+  muscle_heatmap MuscleHeatmap[]
+}
+
+model Session {
+  id           String        @id @default(uuid()) @db.Uuid
+  user_id      String        @db.Uuid
+  name         String
+  start_time   DateTime      @default(now())
+  end_time     DateTime?
+  total_volume Float         @default(0)
+  intensity    String        @default("Low")
+  user         User          @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  logs         ExerciseLog[]
+}
+
+model Exercise {
+  id             String        @id
+  name           String
+  muscle_groups  MuscleGroup[]
+  demo_video_url String
+  logs           ExerciseLog[]
+}
+
+model ExerciseLog {
+  id             String    @id @default(uuid()) @db.Uuid
+  session_id     String    @db.Uuid
+  exercise_id    String
+  weight         Float
+  reps           Int
+  rpe            Float?
+  effective_reps Float
+  created_at     DateTime  @default(now())
+  session        Session   @relation(fields: [session_id], references: [id], onDelete: Cascade)
+  exercise       Exercise  @relation(fields: [exercise_id], references: [id], onDelete: Restrict)
+
+  @@index([session_id])
+}
+
+model MuscleHeatmap {
+  id              String      @id @default(uuid()) @db.Uuid
+  user_id         String      @db.Uuid
+  muscle_group    MuscleGroup
+  fatigue_score   Float       @default(0)
+  last_updated_at DateTime    @default(now())
+  user            User        @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@unique([user_id, muscle_group])
+  @@index([user_id])
+  @@index([muscle_group])
+}
